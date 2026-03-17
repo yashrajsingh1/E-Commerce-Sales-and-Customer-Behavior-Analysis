@@ -1,0 +1,202 @@
+================================================================
+POWER BI DASHBOARD DESIGN GUIDE
+Project: E-Commerce Sales and Customer Behavior Analysis
+================================================================
+
+DATA SOURCE SETUP
+-----------------
+File → Get Data → Text/CSV
+  • cleaned_retail.csv   (main transactions table)
+  • rfm_segments.csv     (RFM customer table)
+
+Create a relationship:
+  cleaned_retail[customer_id]  →  rfm_segments[customer_id]
+  (Many-to-One | Single direction)
+
+
+================================================================
+PAGE 1 OF 3 — EXECUTIVE OVERVIEW
+================================================================
+
+LAYOUT (imagine a 16:9 canvas split into zones):
+
+┌───────────────────────────────────────────────────────────┐
+│  HEADER BAR: "E-Commerce Sales Dashboard | 2010–2011"     │
+│             [Date Slicer]  [Country Slicer]               │
+├──────────┬──────────┬──────────┬──────────┬──────────────┤
+│ KPI CARD │ KPI CARD │ KPI CARD │ KPI CARD │  KPI CARD    │
+│  Total   │  Total   │  Total   │  Avg     │  Repeat      │
+│ Revenue  │  Orders  │ Customers│  AOV     │  Rate        │
+├──────────┴──────────┴──────────┴──────────┴──────────────┤
+│                                                           │
+│  LINE CHART — Monthly Revenue Trend (with target line)    │
+│                                                           │
+├───────────────────────────┬───────────────────────────────┤
+│  BAR CHART                │  MAP VISUAL                   │
+│  Top 10 Countries         │  Revenue by Country (bubble)  │
+│  by Revenue               │                               │
+└───────────────────────────┴───────────────────────────────┘
+
+KPI CARDS (use Card visual):
+  Card 1 – Total Revenue
+      DAX: Total Revenue = SUM(cleaned_retail[total_sales])
+      Format: £#,##0
+
+  Card 2 – Total Orders
+      DAX: Total Orders = DISTINCTCOUNT(cleaned_retail[invoice])
+
+  Card 3 – Total Customers
+      DAX: Total Customers = DISTINCTCOUNT(cleaned_retail[customer_id])
+
+  Card 4 – Average Order Value
+      DAX: AOV = DIVIDE([Total Revenue], [Total Orders])
+      Format: £#,##0.00
+
+  Card 5 – Repeat Customer Rate
+      DAX:
+        Buyers   = DISTINCTCOUNT(cleaned_retail[customer_id])
+        Repeats  = CALCULATE(
+                       DISTINCTCOUNT(cleaned_retail[customer_id]),
+                       FILTER(
+                           VALUES(cleaned_retail[customer_id]),
+                           CALCULATE(DISTINCTCOUNT(cleaned_retail[invoice])) > 1
+                       )
+                   )
+        Repeat Rate = DIVIDE([Repeats], [Buyers])
+      Format: 0.0%
+
+LINE CHART — Monthly Revenue Trend
+  X-axis   : invoicedate (Date Hierarchy → Month)
+  Y-axis   : Total Revenue
+  Legend   : Year
+  Add constant line at average revenue → shows below/above average months
+
+BAR CHART — Top 10 Countries by Revenue
+  Y-axis   : country
+  X-axis   : Total Revenue
+  Sort     : Descending
+  Data labels: On
+
+MAP VISUAL (Filled Map or Bubble Map)
+  Location : country
+  Size     : Total Revenue
+  Tooltip  : Total Customers, Total Orders
+
+
+================================================================
+PAGE 2 OF 3 — PRODUCT & TIME ANALYSIS
+================================================================
+
+┌───────────────────────────────────────────────────────────┐
+│  HEADER: "Product & Behaviour Analysis"                   │
+│          [Month Slicer]  [Day of Week Slicer]             │
+├────────────────────────┬──────────────────────────────────┤
+│  BAR CHART             │  COLUMN CHART                    │
+│  Top 10 Products       │  Revenue by Day of Week          │
+│  by Revenue            │                                  │
+├────────────────────────┼──────────────────────────────────┤
+│  COLUMN CHART          │  HEATMAP (Matrix Visual)         │
+│  Revenue by Hour       │  Month  × Day-of-week            │
+│  of Day                │  Values: Total Revenue           │
+├────────────────────────┴──────────────────────────────────┤
+│  STACKED BAR — Quarterly Revenue (split by Year)          │
+└───────────────────────────────────────────────────────────┘
+
+BAR CHART — Top 10 Products by Revenue
+  Y-axis   : description (Top N filter = 10)
+  X-axis   : Total Revenue
+  Tooltip  : units sold, avg price
+
+COLUMN CHART — Revenue by Day of Week
+  X-axis   : day_of_week (custom sort: Mon–Sun)
+  Y-axis   : Total Revenue
+  Data bar color: conditional (highest = darkest)
+
+COLUMN CHART — Revenue by Hour
+  X-axis   : hour
+  Y-axis   : Total Orders
+  Highlight  peak hours (conditionally format bars)
+
+HEATMAP (Matrix visual)
+  Row    : month_name
+  Column : day_of_week
+  Values : Total Revenue
+  Conditional formatting → background color gradient
+
+STACKED BAR — Quarterly Revenue
+  X-axis : Quarter (Q1–Q4)
+  Legend : Year
+  Y-axis : Total Revenue
+
+
+================================================================
+PAGE 3 OF 3 — CUSTOMER SEGMENTATION (RFM)
+================================================================
+
+┌───────────────────────────────────────────────────────────┐
+│  HEADER: "Customer Segmentation — RFM Analysis"           │
+│          [Segment Slicer]                                  │
+├────────────────────────┬──────────────────────────────────┤
+│  PIE / DONUT CHART     │  BAR CHART                       │
+│  Customers by Segment  │  Revenue by Segment              │
+├────────────────────────┼──────────────────────────────────┤
+│  TABLE                 │  SCATTER CHART                   │
+│  Segment summary:      │  Frequency vs Monetary           │
+│  count, avg R/F/M,     │  Color = Segment                 │
+│  total revenue         │                                  │
+├────────────────────────┴──────────────────────────────────┤
+│  KPI STRIP: Champions | At-Risk | Lost (with counts)      │
+└───────────────────────────────────────────────────────────┘
+
+DONUT CHART — Customer Count by Segment
+  Values   : Customer Count (from rfm_segments)
+  Legend   : segment
+  DAX: Customer Count = COUNTROWS(rfm_segments)
+
+BAR CHART — Revenue by Segment
+  Join rfm_segments → cleaned_retail on customer_id
+  Y-axis  : segment
+  X-axis  : Total Revenue (via relationship)
+
+TABLE — Segment Detail
+  Columns: Segment | Customers | Avg Recency | Avg Frequency
+           | Avg Monetary | Total Revenue
+  Add data bars on Total Revenue column
+  Conditional format Avg Recency (green=low, red=high)
+
+SCATTER CHART — RFM Scatter
+  X-axis  : Average of frequency
+  Y-axis  : Average of monetary
+  Details : customer_id
+  Legend  : segment
+  Size    : recency (inverted — lower = bigger bubble)
+  Tooltip : R_score, F_score, M_score
+
+KPI STRIP (3 Card visuals side-by-side)
+  Champions Count  = CALCULATE([Customer Count], rfm[segment]="Champions")
+  At-Risk Count    = CALCULATE([Customer Count], rfm[segment]="At Risk")
+  Lost Count       = CALCULATE([Customer Count], rfm[segment]="Lost")
+
+
+================================================================
+COLOUR THEME  (paste into View → Themes → Customize)
+================================================================
+Primary Blue   : #1F5C99
+Secondary Blue : #AED6F1
+Accent Orange  : #E67E22
+Positive Green : #27AE60
+Warning Red    : #E74C3C
+Background     : #F7F9FC
+Card BG        : #FFFFFF
+Text Dark      : #2C3E50
+
+
+================================================================
+PUBLISHING CHECKLIST
+================================================================
+[ ] All slicers cross-filter all visuals on the page
+[ ] Mobile layout configured (View → Mobile Layout)
+[ ] Report description added (File → Info)
+[ ] Row-level security tested (if sharing externally)
+[ ] Export PDF for portfolio PDF version
+[ ] Screenshot each page for GitHub README
